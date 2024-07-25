@@ -9,6 +9,7 @@ import {usePosts} from "./hooks/UsePosts";
 import PostService from "./API/PostService";
 import Loader from "./components/UI/Loader/Loader";
 import {useFetching} from "./hooks/useFetching";
+import {getPageCount, getPagesArray} from "./Utils/pages";
 
 function App() {
     const [posts, setPosts] = React.useState([]);
@@ -16,14 +17,17 @@ function App() {
     const [filter, setFilter] = React.useState({sort: '', query: ''});
     const [modal, setModal] = React.useState(false);
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
-    const [totalCount, setTotalCount] = React.useState(0);
+    const [totalPages, setTotalPages] = React.useState(0);
     const [limit, setLimit] = React.useState(10);
     const [page, setPage] = React.useState(1);
+
+    let pagesArray = getPagesArray(totalPages);
 
     const [fetchPosts, isPostLoading, postError] = useFetching( async () => {
         const responce = await PostService.getAll(limit, page);
         setPosts(responce.data);
-        setTotalCount(responce.headers['x-total-count']);
+        const totalCount = responce.headers['x-total-count'];
+        setTotalPages(getPageCount(totalCount, limit));
     })
 
     useEffect(() => {
@@ -37,6 +41,11 @@ function App() {
 
     const removePost = (post) => {
         setPosts(posts.filter(p => p.id !== post.id));
+    }
+
+    const changePage = (page) => {
+        setPage(page);
+        fetchPosts();
     }
 
   return (
@@ -59,6 +68,16 @@ function App() {
             ? <div style={{display: 'flex', justifyContent: 'center', marginTop: 50}}> <Loader /> </div>
             : <PostList remove={removePost} posts={sortedAndSearchedPosts} title="Список постов 1" />
         }
+        <div className="page__wrapper">
+            {pagesArray.map(p =>
+                <span
+                    onClick={() => changePage(p)}
+                    key={p}
+                    className={page === p ? 'page page__current' : 'page'}>
+                    {p}
+                </span>
+            )}
+        </div>
     </div>
   );
 }
